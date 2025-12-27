@@ -102,13 +102,9 @@ static void LoadBuffering(const YAML::Node& root, BufferingConfig& cfg) {
   const YAML::Node ls = buf["latest_stores"];
   if (ls) {
     const std::string lp = PathJoin(p, "latest_stores");
-    cfg.latest_stores.inference_frame =
-        GetOrKey<bool>(ls, "inference_frame", PathJoin(lp, "inference_frame"), cfg.latest_stores.inference_frame);
-    cfg.latest_stores.inference_detections =
-        GetOrKey<bool>(ls, "inference_detections", PathJoin(lp, "inference_detections"),
-                       cfg.latest_stores.inference_detections);
-    cfg.latest_stores.world_state =
-        GetOrKey<bool>(ls, "world_state", PathJoin(lp, "world_state"), cfg.latest_stores.world_state);
+    cfg.latest_stores.inference_frame = GetOrKey<bool>(ls, "inference_frame", PathJoin(lp, "inference_frame"), cfg.latest_stores.inference_frame);
+    cfg.latest_stores.inference_detections = GetOrKey<bool>(ls, "inference_detections", PathJoin(lp, "inference_detections"), cfg.latest_stores.inference_detections);
+    cfg.latest_stores.world_state = GetOrKey<bool>(ls, "world_state", PathJoin(lp, "world_state"), cfg.latest_stores.world_state);
   }
 }
 
@@ -120,8 +116,7 @@ static void LoadInference(const YAML::Node& root, InferenceConfig& cfg) {
   cfg.enabled = GetOrKey<bool>(inf, "enabled", PathJoin(p, "enabled"), cfg.enabled);
   cfg.backend = GetOrKey<std::string>(inf, "backend", PathJoin(p, "backend"), cfg.backend);
   cfg.target_fps = GetOrKey<int>(inf, "target_fps", PathJoin(p, "target_fps"), cfg.target_fps);
-  cfg.confidence_threshold =
-      GetOrKey<float>(inf, "confidence_threshold", PathJoin(p, "confidence_threshold"), cfg.confidence_threshold);
+  cfg.confidence_threshold = GetOrKey<float>(inf, "confidence_threshold", PathJoin(p, "confidence_threshold"), cfg.confidence_threshold);
 
   const YAML::Node model = inf["model"];
   const std::string mp = PathJoin(p, "model");
@@ -140,8 +135,7 @@ static void LoadTracking(const YAML::Node& root, TrackingConfig& cfg) {
   cfg.backend = GetOrKey<std::string>(tr, "backend", PathJoin(p, "backend"), cfg.backend);
   cfg.iou_threshold = GetOrKey<float>(tr, "iou_threshold", PathJoin(p, "iou_threshold"), cfg.iou_threshold);
   cfg.max_missed_frames = GetOrKey<int>(tr, "max_missed_frames", PathJoin(p, "max_missed_frames"), cfg.max_missed_frames);
-  cfg.min_confirmed_frames =
-      GetOrKey<int>(tr, "min_confirmed_frames", PathJoin(p, "min_confirmed_frames"), cfg.min_confirmed_frames);
+  cfg.min_confirmed_frames = GetOrKey<int>(tr, "min_confirmed_frames", PathJoin(p, "min_confirmed_frames"), cfg.min_confirmed_frames);
 }
 
 static void LoadVisualization(const YAML::Node& root, VisualizationConfig& cfg) {
@@ -164,8 +158,7 @@ static void LoadVisualization(const YAML::Node& root, VisualizationConfig& cfg) 
   const std::string rp = PathJoin(p, "recording");
   if (rec) {
     cfg.recording.enabled = GetOrKey<bool>(rec, "enabled", PathJoin(rp, "enabled"), cfg.recording.enabled);
-    cfg.recording.output_path =
-        GetOrKey<std::string>(rec, "output_path", PathJoin(rp, "output_path"), cfg.recording.output_path);
+    cfg.recording.output_path = GetOrKey<std::string>(rec, "output_path", PathJoin(rp, "output_path"), cfg.recording.output_path);
     cfg.recording.fps = GetOrKey<int>(rec, "fps", PathJoin(rp, "fps"), cfg.recording.fps);
   }
 }
@@ -175,16 +168,14 @@ static void LoadMetrics(const YAML::Node& root, MetricsConfig& cfg) {
   if (!m) return;
   const std::string p = "metrics";
 
-  cfg.enable_console_log =
-      GetOrKey<bool>(m, "enable_console_log", PathJoin(p, "enable_console_log"), cfg.enable_console_log);
+  cfg.enable_console_log = GetOrKey<bool>(m, "enable_console_log", PathJoin(p, "enable_console_log"), cfg.enable_console_log);
   cfg.log_interval_ms = GetOrKey<int>(m, "log_interval_ms", PathJoin(p, "log_interval_ms"), cfg.log_interval_ms);
 
   const YAML::Node csv = m["record_csv"];
   const std::string cp = PathJoin(p, "record_csv");
   if (csv) {
     cfg.record_csv.enabled = GetOrKey<bool>(csv, "enabled", PathJoin(cp, "enabled"), cfg.record_csv.enabled);
-    cfg.record_csv.output_path =
-        GetOrKey<std::string>(csv, "output_path", PathJoin(cp, "output_path"), cfg.record_csv.output_path);
+    cfg.record_csv.output_path = GetOrKey<std::string>(csv, "output_path", PathJoin(cp, "output_path"), cfg.record_csv.output_path);
   }
 }
 
