@@ -1,0 +1,49 @@
+camera:
+  backend: opencv
+  device_index: 0
+  width: 1280
+  height: 720
+  fps: 30
+
+preprocess:
+  resize_width: 640
+  resize_height: 360
+  crop_roi:
+    enabled: true
+    x: 0
+    y: 120
+    width: 640
+    height: 240
+
+buffering:
+  queues:
+    camera_to_preprocess:
+      capacity: 2
+      drop_policy: drop_oldest
+    preprocess_to_tracking:
+      capacity: 2
+      drop_policy: drop_oldest
+
+inference:
+  enabled: true
+  backend: onnx
+  target_fps: 8
+  confidence_threshold: 0.45
+  model:
+    path: "models/yolo.onnx"
+    input_width: 640
+    input_height: 360
+
+tracking:
+  backend: iou
+  iou_threshold: 0.25
+  max_missed_frames: 7
+  min_confirmed_frames: 2
+
+visualization:
+  enabled: true
+  show_hud: true
+  recording:
+    enabled: true
+    output_path: "output/car_run.mp4"
+    fps: 30

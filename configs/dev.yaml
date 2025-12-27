@@ -1,0 +1,69 @@
+camera:
+  backend: opencv
+  device_index: 0
+  width: 1280
+  height: 720
+  fps: 30
+  flip_vertical: false
+  flip_horizontal: false
+
+preprocess:
+  resize_width: 640
+  resize_height: 360
+  crop_roi:
+    enabled: false
+    x: 0
+    y: 0
+    width: 640
+    height: 360
+
+buffering:
+  queues:
+    camera_to_preprocess:
+      capacity: 4
+      drop_policy: drop_oldest
+    preprocess_to_tracking:
+      capacity: 4
+      drop_policy: drop_oldest
+
+  latest_stores:
+    inference_frame: true
+    inference_detections: true
+    world_state: true
+
+inference:
+  enabled: true
+  backend: dummy          # dummy | onnx
+  target_fps: 10
+  confidence_threshold: 0.5
+  model:
+    path: ""              # required if backend != dummy
+    input_width: 640
+    input_height: 360
+
+tracking:
+  backend: iou            # iou | kalman
+  iou_threshold: 0.3
+  max_missed_frames: 5
+  min_confirmed_frames: 3
+
+visualization:
+  enabled: true
+  window_name: "Dashcam Perception"
+  show_boxes: true
+  show_track_ids: true
+  show_confidence: true
+  show_hud: true
+  show_fps: true
+  show_latency: true
+  recording:
+    enabled: false
+    output_path: "output/run.mp4"
+    fps: 30
+
+metrics:
+  enable_console_log: true
+  log_interval_ms: 1000
+  record_csv:
+    enabled: false
+    output_path: "logs/metrics.csv"
