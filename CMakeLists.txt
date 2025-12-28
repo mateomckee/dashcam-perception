@@ -62,10 +62,10 @@ target_link_libraries(live_viewer PRIVATE dashcam_core)
 add_executable(offline_replay apps/offline_replay.cpp)
 target_link_libraries(offline_replay PRIVATE dashcam_core)
 
-add_executable(thread_runner_test apps/thread_runner_test.cpp)
+add_executable(thread_runner_test tests/thread_runner_test.cpp)
 target_link_libraries(thread_runner_test PRIVATE dashcam_core)
 
-add_executable(bounded_queue_test apps/bounded_queue_test.cpp)
+add_executable(bounded_queue_test tests/bounded_queue_test.cpp)
 target_link_libraries(bounded_queue_test PRIVATE dashcam_core)
 
 # Tests
