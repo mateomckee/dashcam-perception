@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
     auto camera_to_preprocess_queue = std::make_shared<FrameQueue>(cfg.buffering.queues.camera_to_preprocess.capacity, cfg.buffering.queues.camera_to_preprocess.drop_policy);
 
     // Create the stages and pass references of resources to appropriate stages
-    dcp::CameraStage camera_stage(camera_to_preprocess_queue);
+    dcp::CameraStage camera_stage(cfg.camera, camera_to_preprocess_queue);
 
     // Start each stage, consumers first. The stage will then handle its own looping/thread logic
     camera_stage.start(global_stop.token());
@@ -73,7 +73,7 @@ int main(int argc, char** argv) {
 
     // At this point, pipeline has ended and program is ending, clean up
 
-    global_stop.request_stop(); // Crucial, immediately call for all pipeline threads to stop on end condition
+    global_stop.request_stop(); // Crucial, immediately call for all running threads to stop
 
     // Stop all stages, producers first
     camera_stage.stop();

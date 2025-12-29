@@ -6,7 +6,7 @@
 #include <opencv2/core.hpp>
 
 /*
-    Defines the structure for a singular frame in a video stream
+  Defines the structure for a singular frame in a video stream
 */
 
 namespace dcp {
