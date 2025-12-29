@@ -21,6 +21,13 @@ find_package(OpenCV REQUIRED)
 add_library(dashcam_core
   src/core/config_loader.cpp
   src/infra/thread_runner.cpp
+
+  src/stages/stage.cpp
+  src/stages/camera_stage.cpp
+  src/stages/preprocess_stage.cpp
+  src/stages/inference_stage.cpp
+  src/stages/tracking_stage.cpp
+  src/stages/visualization_stage.cpp
   # Add more .cpp files once created
   # ...
 )
