@@ -51,8 +51,8 @@ static cv::Rect ComputeRoiRect(const cv::Mat& img, const RoiConfig& cfg) {
     return roi;
 }
 
-PreprocessStage::PreprocessStage(PreprocessConfig cfg, std::shared_ptr<BoundedQueue<Frame>> in, std::shared_ptr<BoundedQueue<PreprocessedFrame>> out)
-    : Stage("preprocess_stage"), cfg_(std::move(cfg)), in_(std::move(in)), out_(std::move(out)) {}
+PreprocessStage::PreprocessStage(PreprocessConfig cfg, std::shared_ptr<BoundedQueue<Frame>> in, std::shared_ptr<BoundedQueue<PreprocessedFrame>> out, std::shared_ptr<LatestStore<PreprocessedFrame>> preprocessed_latest_store)
+    : Stage("preprocess_stage"), cfg_(std::move(cfg)), in_(std::move(in)), out_(std::move(out)), preprocessed_latest_store_(std::move(preprocessed_latest_store)) {}
 
 void PreprocessStage::run(const StopToken& global, const std::atomic_bool& local) {
   using namespace std::chrono_literals;
@@ -96,11 +96,11 @@ void PreprocessStage::run(const StopToken& global, const std::atomic_bool& local
     pf.info.resize_width = cfg_.resize_width;
     pf.info.resize_height = cfg_.resize_height;
 
-    // Push preprocessed_frame to output queue (fast path)
+    // Push preprocessed frame to output queue (fast path), copy
     out_->try_push(pf);
 
-    // Push preprocessed_frame to latest_store (slow path)
-    //
+    // Write preprocessed frame to preprocessed latest_store (slow path), move
+    preprocessed_latest_store_->write(std::move(pf));
   }
 }
 

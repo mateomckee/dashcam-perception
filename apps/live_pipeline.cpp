@@ -9,6 +9,7 @@
 #include "core/config_loader.hpp"
 #include "core/frame.hpp"
 #include "core/preprocessed_frame.hpp"
+#include "core/detections.hpp"
 #include "infra/stop_token.hpp"
 
 // Resources
@@ -47,14 +48,14 @@ int main(int argc, char** argv) {
     // Actual pipeline logic starts here
 
     // Begin by creating all resources (queues/lateststores/metrics/etc.) needed
-    using FrameQueue = dcp::BoundedQueue<dcp::Frame>;
-    using PreprocessedFrameQueue = dcp::BoundedQueue<dcp::PreprocessedFrame>;
-    auto camera_to_preprocess_queue = std::make_shared<FrameQueue>(cfg.buffering.queues.camera_to_preprocess.capacity, cfg.buffering.queues.camera_to_preprocess.drop_policy);
-    auto preprocess_to_tracking_queue = std::make_shared<PreprocessedFrameQueue>(cfg.buffering.queues.preprocess_to_tracking.capacity, cfg.buffering.queues.preprocess_to_tracking.drop_policy);
+    auto camera_to_preprocess_queue = std::make_shared<dcp::BoundedQueue<dcp::Frame>>(cfg.buffering.queues.camera_to_preprocess.capacity, cfg.buffering.queues.camera_to_preprocess.drop_policy);
+    auto preprocess_to_tracking_queue = std::make_shared<dcp::BoundedQueue<dcp::PreprocessedFrame>>(cfg.buffering.queues.preprocess_to_tracking.capacity, cfg.buffering.queues.preprocess_to_tracking.drop_policy);
+    auto preprocessed_latest_store = std::make_shared<dcp::LatestStore<dcp::PreprocessedFrame>>();
+    auto detections_latest_store = std::make_shared<dcp::LatestStore<dcp::Detections>>();
 
     // Create the stages and pass references of resources to appropriate stages
     dcp::CameraStage camera_stage(cfg.camera, camera_to_preprocess_queue);
-    dcp::PreprocessStage preprocess_stage(cfg.preprocess, camera_to_preprocess_queue, preprocess_to_tracking_queue);
+    dcp::PreprocessStage preprocess_stage(cfg.preprocess, camera_to_preprocess_queue, preprocess_to_tracking_queue, preprocessed_latest_store);
 
     // Start each stage, consumers first. The stage will then handle its own looping/thread logic
     preprocess_stage.start(global_stop.token());
