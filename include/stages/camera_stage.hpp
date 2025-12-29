@@ -5,8 +5,8 @@
 
 #include <opencv2/videoio.hpp>
 
-#include "core/frame.hpp"
 #include "core/config.hpp"
+#include "core/frame.hpp"
 #include "infra/bounded_queue.hpp"
 #include "stages/stage.hpp"
 
