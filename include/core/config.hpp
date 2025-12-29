@@ -10,11 +10,22 @@ enum class DropPolicy {
 };
 
 struct RoiConfig {
-  bool enabled = false;
-  int x = 0;
-  int y = 0;
-  int width = 0;
-  int height = 0;
+  bool enabled{false};
+
+  // If use_normalized=true, interpret x/y/w/h as normalized [0..1] fractions
+  bool use_normalized{true};
+
+  // Normalized ROI (fractions of image width/height)
+  float x_norm{0.f};
+  float y_norm{0.5f};
+  float w_norm{1.f};
+  float h_norm{0.5f};
+
+  // Pixel ROI (legacy / optional)
+  int x{0};
+  int y{0};
+  int width{0};
+  int height{0};
 };
 
 struct QueueConfig {

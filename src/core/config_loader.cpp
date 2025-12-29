@@ -65,21 +65,39 @@ static void LoadCamera(const YAML::Node& root, CameraConfig& cfg) {
 }
 
 static void LoadPreprocess(const YAML::Node& root, PreprocessConfig& cfg) {
-  const YAML::Node pre = root["preprocess"];
-  if (!pre) return;
+  const auto pre = root["preprocess"];
   const std::string p = "preprocess";
 
-  cfg.resize_width = GetOrKey<int>(pre, "resize_width", PathJoin(p, "resize_width"), cfg.resize_width);
-  cfg.resize_height = GetOrKey<int>(pre, "resize_height", PathJoin(p, "resize_height"), cfg.resize_height);
+  cfg.resize_width = GetOrKey<int>(pre["resize_width"], "resize_width", PathJoin(p, "resize_width"), cfg.resize_width);
+  cfg.resize_height = GetOrKey<int>(pre["resize_height"], "resize_height", PathJoin(p, "resize_height"), cfg.resize_height);
 
-  const YAML::Node roi = pre["crop_roi"];
+  const auto roi = pre["crop_roi"];
   const std::string rp = PathJoin(p, "crop_roi");
-  if (roi) {
-    cfg.crop_roi.enabled = GetOrKey<bool>(roi, "enabled", PathJoin(rp, "enabled"), cfg.crop_roi.enabled);
-    cfg.crop_roi.x = GetOrKey<int>(roi, "x", PathJoin(rp, "x"), cfg.crop_roi.x);
-    cfg.crop_roi.y = GetOrKey<int>(roi, "y", PathJoin(rp, "y"), cfg.crop_roi.y);
-    cfg.crop_roi.width = GetOrKey<int>(roi, "width", PathJoin(rp, "width"), cfg.crop_roi.width);
-    cfg.crop_roi.height = GetOrKey<int>(roi, "height", PathJoin(rp, "height"), cfg.crop_roi.height);
+  cfg.crop_roi.enabled = GetOrKey<bool>(roi["enabled"], "enabled", PathJoin(rp, "enabled"), cfg.crop_roi.enabled);
+
+  // ROI Config section within PreprocessConfig
+  // Set either normalized percentage or static pixel mode
+
+  const bool has_norm =
+      (roi && (roi["x_norm"] || roi["y_norm"] || roi["w_norm"] || roi["h_norm"]));
+
+  const bool has_px =
+      (roi && (roi["x"] || roi["y"] || roi["width"] || roi["height"]));
+
+  if (has_norm) {
+    cfg.crop_roi.use_normalized = true;
+    cfg.crop_roi.x_norm = GetOrKey<float>(roi["x_norm"], "x_norm", PathJoin(rp, "x_norm"), cfg.crop_roi.x_norm);
+    cfg.crop_roi.y_norm = GetOrKey<float>(roi["y_norm"], "y_norm", PathJoin(rp, "y_norm"), cfg.crop_roi.y_norm);
+    cfg.crop_roi.w_norm = GetOrKey<float>(roi["w_norm"], "w_norm", PathJoin(rp, "w_norm"), cfg.crop_roi.w_norm);
+    cfg.crop_roi.h_norm = GetOrKey<float>(roi["h_norm"], "h_norm", PathJoin(rp, "h_norm"), cfg.crop_roi.h_norm);
+  } else if (has_px) {
+    cfg.crop_roi.use_normalized = false;
+    cfg.crop_roi.x = GetOrKey<int>(roi["x"], "x", PathJoin(rp, "x"), cfg.crop_roi.x);
+    cfg.crop_roi.y = GetOrKey<int>(roi["y"], "y", PathJoin(rp, "y"), cfg.crop_roi.y);
+    cfg.crop_roi.width = GetOrKey<int>(roi["width"],"width", PathJoin(rp, "width"), cfg.crop_roi.width);
+    cfg.crop_roi.height = GetOrKey<int>(roi["height"], "height", PathJoin(rp, "height"), cfg.crop_roi.height);
+  } else {
+    cfg.crop_roi.use_normalized = true;
   }
 }
 

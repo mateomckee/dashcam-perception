@@ -8,6 +8,10 @@ namespace dcp {
 PreprocessStage::PreprocessStage(PreprocessConfig cfg, std::shared_ptr<BoundedQueue<Frame>> in, std::shared_ptr<BoundedQueue<PreprocessedFrame>> out)
     : Stage("preprocess_stage"), cfg_(std::move(cfg)), in_(std::move(in)), out_(std::move(out)) {}
 
+void ComputeROI(RoiConfig roi_cfg) {
+
+}
+
 void PreprocessStage::run(const StopToken& global, const std::atomic_bool& local) {
   using namespace std::chrono_literals;
 
@@ -22,11 +26,20 @@ void PreprocessStage::run(const StopToken& global, const std::atomic_bool& local
     if(!in_->try_pop_for(f, 5ms)) {
         continue; // Try again
     }
-
     
+    // Here we now have a frame read and ready to be preprocessed
 
-    RoiConfig roi_cfg = cfg_.crop_roi;
-    if(roi_cfg.enabled) {
+    // If we want to perform ROI cropping
+    if(cfg_.crop_roi.enabled) {
+
+        // If values passed in are normalized
+        if(cfg_.crop_roi.use_normalized) {
+
+        }
+        // Otherwise, values are static pixel
+        else {
+
+        }
         
     }
 
