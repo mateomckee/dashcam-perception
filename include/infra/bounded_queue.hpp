@@ -7,7 +7,7 @@
 #include <mutex>
 #include <optional>
 
-#include "core/config.hpp" // For queue config
+#include "core/config.hpp"
 
 /*
     Implementation of bounded queue with capacity, drop policy, timed pop, non-blocking push, and statistics

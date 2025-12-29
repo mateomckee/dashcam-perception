@@ -14,7 +14,7 @@ namespace dcp {
 
 class CameraStage final : public Stage {
 public:
-  CameraStage(CameraConfig, std::shared_ptr<BoundedQueue<Frame>> out);
+  CameraStage(CameraConfig cfg, std::shared_ptr<BoundedQueue<Frame>> out);
 
 protected:
   void run(const StopToken& global_stop,
