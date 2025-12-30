@@ -3,8 +3,6 @@
 #include <cstdint>
 #include <memory>
 
-#include <opencv2/imgproc.hpp>
-
 #include "core/config.hpp"
 #include "core/frame.hpp"
 #include "core/preprocessed_frame.hpp"

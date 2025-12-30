@@ -1,7 +1,7 @@
-#include "stages/inference_stage.hpp"
-
 #include <chrono>
 #include <iostream>
+
+#include "stages/inference_stage.hpp"
 
 namespace dcp {
 

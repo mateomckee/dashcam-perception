@@ -1,7 +1,7 @@
-#include "stages/stage.hpp"
 #include <iostream>
-
 #include <utility>
+
+#include "stages/stage.hpp"
 
 namespace dcp {
 

@@ -1,6 +1,8 @@
 #include <chrono>
 #include <iostream>
 
+#include <opencv2/imgproc.hpp>
+
 #include "stages/preprocess_stage.hpp"
 
 namespace dcp {

@@ -5,7 +5,7 @@ camera:
   height: 720
   fps: 30
   flip_vertical: false
-  flip_horizontal: false
+  flip_horizontal: true
 
 preprocess:
   resize_width: 640

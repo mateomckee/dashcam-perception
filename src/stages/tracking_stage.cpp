@@ -1,7 +1,7 @@
-#include "stages/tracking_stage.hpp"
-
 #include <chrono>
 #include <iostream>
+
+#include "stages/tracking_stage.hpp"
 
 namespace dcp {
 
@@ -12,7 +12,21 @@ void TrackingStage::run(const StopToken& global, const std::atomic_bool& local) 
     using namespace std::chrono_literals;
 
     while (!global.stop_requested() && !local.load(std::memory_order_relaxed)) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(25));
+        // First thing to do in Tracking stage is to always pop and read the next raw frame from the fast path
+        Frame f;
+        if(!in_->try_pop_for(f, 5ms)) {
+            continue; // Try again
+        }
+
+        // Dummy values
+        WorldState ws;
+
+        RenderFrame rf;
+        rf.frame = f;
+        rf.world = ws;
+
+        // Push RenderFrame (a wrapper containing WorldState and Frame) to visualization stage
+        out_->try_push(rf);
     }
 }
 

@@ -1,7 +1,9 @@
-#include "stages/camera_stage.hpp"
-
 #include <chrono>
 #include <iostream>
+
+#include <opencv2/videoio.hpp>
+
+#include "stages/camera_stage.hpp"
 
 namespace dcp {
 

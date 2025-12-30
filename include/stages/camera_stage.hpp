@@ -3,8 +3,6 @@
 #include <cstdint>
 #include <memory>
 
-#include <opencv2/videoio.hpp>
-
 #include "core/config.hpp"
 #include "core/frame.hpp"
 #include "infra/bounded_queue.hpp"
