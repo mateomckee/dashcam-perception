@@ -50,7 +50,7 @@ static cv::Rect ComputeRoiRect(const cv::Mat& img, const RoiConfig& cfg) {
     return roi;
 }
 
-PreprocessStage::PreprocessStage(PreprocessConfig cfg, std::shared_ptr<BoundedQueue<Frame>> in, std::shared_ptr<BoundedQueue<PreprocessedFrame>> out, std::shared_ptr<LatestStore<PreprocessedFrame>> preprocessed_latest_store)
+PreprocessStage::PreprocessStage(PreprocessConfig cfg, std::shared_ptr<BoundedQueue<Frame>> in, std::shared_ptr<BoundedQueue<Frame>> out, std::shared_ptr<LatestStore<PreprocessedFrame>> preprocessed_latest_store)
     : Stage("preprocess_stage"), cfg_(std::move(cfg)), in_(std::move(in)), out_(std::move(out)), preprocessed_latest_store_(std::move(preprocessed_latest_store)) {}
 
 void PreprocessStage::run(const StopToken& global, const std::atomic_bool& local) {
@@ -74,6 +74,11 @@ void PreprocessStage::run(const StopToken& global, const std::atomic_bool& local
         continue;
     }
 
+    // Push raw frame to output queue (fast path), copy
+    out_->try_push(f);
+
+    // Begin preprocess operation for inference stage (slow path)
+
     const auto t_pre = std::chrono::steady_clock::now();
 
     // Perform ROI crop, nothing changes if disabled
@@ -84,7 +89,7 @@ void PreprocessStage::run(const StopToken& global, const std::atomic_bool& local
     cv::Mat resized;
     cv::resize(roi_view, resized, cv::Size(cfg_.resize_width, cfg_.resize_height), 0, 0, cv::INTER_LINEAR);
 
-    // Now that preprocessing is done, build new PreprocessedFrame and send it through to both streams (fast/slow), even if no changes were made
+    // Now that preprocessing is done, build new PreprocessedFrame and send it through to slow stream, even if no changes were made
     PreprocessedFrame pf;
     pf.source_frame_id = f.sequence_id;
     pf.capture_time = f.capture_time;
@@ -94,9 +99,6 @@ void PreprocessStage::run(const StopToken& global, const std::atomic_bool& local
     pf.info.roi = roi;
     pf.info.resize_width = cfg_.resize_width;
     pf.info.resize_height = cfg_.resize_height;
-
-    // Push preprocessed frame to output queue (fast path), copy
-    out_->try_push(pf);
 
     // Write preprocessed frame to preprocessed latest_store (slow path), move
     preprocessed_latest_store_->write(std::move(pf));

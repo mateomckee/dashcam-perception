@@ -10,6 +10,8 @@
 #include "core/frame.hpp"
 #include "core/preprocessed_frame.hpp"
 #include "core/detections.hpp"
+#include "core/render_frame.hpp"
+
 #include "infra/stop_token.hpp"
 
 // Resources
@@ -49,17 +51,20 @@ int main(int argc, char** argv) {
 
     // Begin by creating all resources (queues/lateststores/metrics/etc.) needed
     auto camera_to_preprocess_queue = std::make_shared<dcp::BoundedQueue<dcp::Frame>>(cfg.buffering.queues.camera_to_preprocess.capacity, cfg.buffering.queues.camera_to_preprocess.drop_policy);
-    auto preprocess_to_tracking_queue = std::make_shared<dcp::BoundedQueue<dcp::PreprocessedFrame>>(cfg.buffering.queues.preprocess_to_tracking.capacity, cfg.buffering.queues.preprocess_to_tracking.drop_policy);
+    auto preprocess_to_tracking_queue = std::make_shared<dcp::BoundedQueue<dcp::Frame>>(cfg.buffering.queues.preprocess_to_tracking.capacity, cfg.buffering.queues.preprocess_to_tracking.drop_policy);
     auto preprocessed_latest_store = std::make_shared<dcp::LatestStore<dcp::PreprocessedFrame>>();
     auto detections_latest_store = std::make_shared<dcp::LatestStore<dcp::Detections>>();
+    auto tracking_to_visualization_queue = std::make_shared<dcp::BoundedQueue<dcp::RenderFrame>>(cfg.buffering.queues.tracking_to_visualization.capacity, cfg.buffering.queues.tracking_to_visualization.drop_policy);
 
     // Create the stages and pass references of resources to appropriate stages
     dcp::CameraStage camera_stage(cfg.camera, camera_to_preprocess_queue);
     dcp::PreprocessStage preprocess_stage(cfg.preprocess, camera_to_preprocess_queue, preprocess_to_tracking_queue, preprocessed_latest_store);
     dcp::InferenceStage inference_stage(cfg.inference, preprocessed_latest_store, detections_latest_store);
-    dcp::TrackingStage tracking_stage(cfg.tracking, camera_to_preprocess_queue, detections_latest_store); //temp values
+    dcp::TrackingStage tracking_stage(cfg.tracking, preprocess_to_tracking_queue, detections_latest_store, tracking_to_visualization_queue);
+    dcp::VisualizationStage visualization_stage(cfg.visualization, tracking_to_visualization_queue);
 
     // Start each stage, consumers first. The stage will then handle its own looping/thread logic
+    visualization_stage.start(global_stop.token());
     tracking_stage.start(global_stop.token());
     inference_stage.start(global_stop.token());
     preprocess_stage.start(global_stop.token());
@@ -90,6 +95,7 @@ int main(int argc, char** argv) {
     preprocess_stage.stop();
     inference_stage.stop();
     tracking_stage.stop();
+    visualization_stage.stop();
 
   } catch (const std::exception& e) {
     std::cerr << e.what() << "\n";

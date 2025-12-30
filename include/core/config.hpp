@@ -60,6 +60,7 @@ struct LatestStoresConfig {
 struct QueuesConfig {
   QueueConfig camera_to_preprocess{};
   QueueConfig preprocess_to_tracking{};
+  QueueConfig tracking_to_visualization{};
 };
 
 struct BufferingConfig {
