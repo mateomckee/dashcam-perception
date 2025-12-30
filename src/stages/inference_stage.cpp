@@ -40,6 +40,7 @@ void InferenceStage::run(const StopToken& global, const std::atomic_bool& local)
         dcp::Detections dets;
         dets.inference_time = t_inference;
         dets.source_frame_id = pf_opt->source_frame_id;
+        dets.preprocess_info = pf_opt->info;
 
         // Test value: singular detection
         dcp::Detection d;
