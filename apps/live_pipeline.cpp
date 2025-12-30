@@ -56,8 +56,12 @@ int main(int argc, char** argv) {
     // Create the stages and pass references of resources to appropriate stages
     dcp::CameraStage camera_stage(cfg.camera, camera_to_preprocess_queue);
     dcp::PreprocessStage preprocess_stage(cfg.preprocess, camera_to_preprocess_queue, preprocess_to_tracking_queue, preprocessed_latest_store);
+    dcp::InferenceStage inference_stage(cfg.inference, preprocessed_latest_store, detections_latest_store);
+    dcp::TrackingStage tracking_stage(cfg.tracking, camera_to_preprocess_queue, detections_latest_store); //temp values
 
     // Start each stage, consumers first. The stage will then handle its own looping/thread logic
+    tracking_stage.start(global_stop.token());
+    inference_stage.start(global_stop.token());
     preprocess_stage.start(global_stop.token());
     camera_stage.start(global_stop.token());
 
@@ -84,6 +88,8 @@ int main(int argc, char** argv) {
     // Stop all stages, producers first
     camera_stage.stop();
     preprocess_stage.stop();
+    inference_stage.stop();
+    tracking_stage.stop();
 
   } catch (const std::exception& e) {
     std::cerr << e.what() << "\n";

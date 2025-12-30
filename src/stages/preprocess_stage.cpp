@@ -3,7 +3,6 @@
 
 #include "stages/preprocess_stage.hpp"
 
-
 namespace dcp {
 
 // Simple helper functions to encapsulate ROI calculation logic (only used in preprocess stage)
