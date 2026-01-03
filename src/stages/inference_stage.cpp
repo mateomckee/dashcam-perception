@@ -5,8 +5,8 @@
 
 namespace dcp {
 
-InferenceStage::InferenceStage(InferenceConfig cfg, std::shared_ptr<LatestStore<PreprocessedFrame>> preprocessed_latest_store, std::shared_ptr<LatestStore<Detections>> detections_latest_store)
-    : Stage("inference_stage"), cfg_(std::move(cfg)), preprocessed_latest_store_(std::move(preprocessed_latest_store)), detections_latest_store_(std::move(detections_latest_store)) {}
+InferenceStage::InferenceStage(StageMetrics* metrics, InferenceConfig cfg, std::shared_ptr<LatestStore<PreprocessedFrame>> preprocessed_latest_store, std::shared_ptr<LatestStore<Detections>> detections_latest_store)
+    : Stage("inference_stage"), metrics_(metrics), cfg_(std::move(cfg)), preprocessed_latest_store_(std::move(preprocessed_latest_store)), detections_latest_store_(std::move(detections_latest_store)) {}
 
 void InferenceStage::run(const StopToken& global, const std::atomic_bool& local) {
     using namespace std::chrono_literals;
@@ -28,21 +28,22 @@ void InferenceStage::run(const StopToken& global, const std::atomic_bool& local)
             continue;
         }
 
+        // Start work time
+        const auto t0 = std::chrono::steady_clock::now();
+
         // Set for checking version against future frames
         last_seen_version = ver;
 
-        const auto t_inference = std::chrono::steady_clock::now();
-
         // Simulate a heavy inference operation
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        std::this_thread::sleep_for(std::chrono::milliseconds(72));
 
         // Store inference results
         dcp::Detections dets;
-        dets.inference_time = t_inference;
+        dets.inference_time = std::chrono::steady_clock::now();
         dets.source_frame_id = pf_opt->source_frame_id;
         dets.preprocess_info = pf_opt->info;
 
-        // Test value: singular detection
+        // Test value of a singular detection
         dcp::Detection d;
         d.class_id = 0;
         d.confidence = 0.9f;
@@ -51,6 +52,10 @@ void InferenceStage::run(const StopToken& global, const std::atomic_bool& local)
 
         // Store detections in latest store
         detections_latest_store_->write(std::move(dets));
+
+        // End work time, store in metrics
+        const auto work_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - t0).count();
+        if (metrics_) metrics_->on_item(static_cast<std::uint64_t>(work_ns));
     }
 }
 

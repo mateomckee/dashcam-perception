@@ -7,8 +7,8 @@
 
 namespace dcp {
 
-CameraStage::CameraStage(CameraConfig cfg, std::shared_ptr<BoundedQueue<Frame>> out)
-    : Stage("camera_stage"), cfg_(std::move(cfg)), out_(std::move(out)) {}
+CameraStage::CameraStage(StageMetrics* metrics, CameraConfig cfg, std::shared_ptr<BoundedQueue<Frame>> out)
+    : Stage("camera_stage"), metrics_(metrics), cfg_(std::move(cfg)), out_(std::move(out)) {}
 
 void CameraStage::run(const StopToken& global, const std::atomic_bool& local) {
   using namespace std::chrono_literals;
@@ -25,7 +25,6 @@ void CameraStage::run(const StopToken& global, const std::atomic_bool& local) {
   cap.set(cv::CAP_PROP_FPS, cfg_.fps);
 
   while (!global.stop_requested() && !local.load(std::memory_order_relaxed)) {
-    // Main frame image data
     cv::Mat img;
 
     // Read one frame from capture, if unable, try again
@@ -34,18 +33,25 @@ void CameraStage::run(const StopToken& global, const std::atomic_bool& local) {
       continue;
     }
 
+    // Start work time
+    const auto t0 = std::chrono::steady_clock::now();
+
     // Immediately handle frame adjustments once, make new canonical frame
     if (cfg_.flip_vertical) cv::flip(img, img, 0);
     if (cfg_.flip_horizontal) cv::flip(img, img, 1);
 
-    // Create frame
+    // Create frame variable
     Frame f;
     f.capture_time = std::chrono::steady_clock::now();
     f.sequence_id = next_id_++;
     f.image = std::move(img); // Set frame data
 
-    // Push frame to queue
+    // Push frame to next queue
     out_->try_push(std::move(f));
+
+    // End work time, store in metrics
+    const auto work_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - t0).count();
+    if (metrics_) metrics_->on_item(static_cast<std::uint64_t>(work_ns));
   }
 }
 

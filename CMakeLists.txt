@@ -28,6 +28,8 @@ add_library(dashcam_core
   src/stages/preprocess_stage.cpp
   src/stages/inference_stage.cpp
   src/stages/tracking_stage.cpp
+  src/apps/ansi_dashboard.cpp
+  src/apps/hud_overlay.cpp
   # Add more .cpp files once created
   # ...
 )

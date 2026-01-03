@@ -115,6 +115,10 @@ static void LoadBuffering(const YAML::Node& root, BufferingConfig& cfg) {
     LoadQueueConfig(qs["preprocess_to_tracking"],
                     PathJoin(PathJoin(p, "queues"), "preprocess_to_tracking"),
                     cfg.queues.preprocess_to_tracking);
+    
+    LoadQueueConfig(qs["tracking_to_visualization"],
+                    PathJoin(PathJoin(p, "queues"), "tracking_to_visualization"),
+                    cfg.queues.tracking_to_visualization);
   }
 
   const YAML::Node ls = buf["latest_stores"];
@@ -214,6 +218,8 @@ void ValidateOrThrow(const AppConfig& cfg) {
     throw ConfigError("buffering.queues.camera_to_preprocess.capacity", "must be >= 1");
   if (cfg.buffering.queues.preprocess_to_tracking.capacity < 1)
     throw ConfigError("buffering.queues.preprocess_to_tracking.capacity", "must be >= 1");
+  if (cfg.buffering.queues.tracking_to_visualization.capacity < 1)
+    throw ConfigError("buffering.queues.tracking_to_visualization.capacity", "must be >= 1");
 
   if (cfg.inference.enabled) {
     if (cfg.inference.target_fps <= 0)

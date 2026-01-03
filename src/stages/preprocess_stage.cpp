@@ -52,8 +52,8 @@ static cv::Rect ComputeRoiRect(const cv::Mat& img, const RoiConfig& cfg) {
     return roi;
 }
 
-PreprocessStage::PreprocessStage(PreprocessConfig cfg, std::shared_ptr<BoundedQueue<Frame>> in, std::shared_ptr<BoundedQueue<Frame>> out, std::shared_ptr<LatestStore<PreprocessedFrame>> preprocessed_latest_store)
-    : Stage("preprocess_stage"), cfg_(std::move(cfg)), in_(std::move(in)), out_(std::move(out)), preprocessed_latest_store_(std::move(preprocessed_latest_store)) {}
+PreprocessStage::PreprocessStage(StageMetrics* metrics, PreprocessConfig cfg, std::shared_ptr<BoundedQueue<Frame>> in, std::shared_ptr<BoundedQueue<Frame>> out, std::shared_ptr<LatestStore<PreprocessedFrame>> preprocessed_latest_store)
+    : Stage("preprocess_stage"), metrics_(metrics), cfg_(std::move(cfg)), in_(std::move(in)), out_(std::move(out)), preprocessed_latest_store_(std::move(preprocessed_latest_store)) {}
 
 void PreprocessStage::run(const StopToken& global, const std::atomic_bool& local) {
   using namespace std::chrono_literals;
@@ -76,12 +76,13 @@ void PreprocessStage::run(const StopToken& global, const std::atomic_bool& local
         continue;
     }
 
+    // Start work time
+    const auto t0 = std::chrono::steady_clock::now();
+
     // Push raw frame to output queue (fast path), copy
     out_->try_push(f);
 
     // Begin preprocess operation for inference stage (slow path)
-
-    const auto t_pre = std::chrono::steady_clock::now();
 
     // Perform ROI crop, nothing changes if disabled
     const cv::Rect roi = ComputeRoiRect(src, cfg_.crop_roi);
@@ -95,15 +96,20 @@ void PreprocessStage::run(const StopToken& global, const std::atomic_bool& local
     PreprocessedFrame pf;
     pf.source_frame_id = f.sequence_id;
     pf.capture_time = f.capture_time;
-    pf.preprocess_time = t_pre;
     pf.image = std::move(resized);
     pf.info.roi_applied = cfg_.crop_roi.enabled;
     pf.info.roi = roi;
     pf.info.resize_width = cfg_.resize_width;
     pf.info.resize_height = cfg_.resize_height;
 
+    pf.preprocess_time = std::chrono::steady_clock::now();
+
     // Write preprocessed frame to preprocessed latest_store (slow path), move
     preprocessed_latest_store_->write(std::move(pf));
+
+    // End work time, store in metrics
+    const auto work_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - t0).count();
+    if (metrics_) metrics_->on_item(static_cast<std::uint64_t>(work_ns));
   }
 }
 

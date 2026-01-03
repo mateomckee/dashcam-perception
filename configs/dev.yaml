@@ -20,10 +20,13 @@ preprocess:
 buffering:
   queues:
     camera_to_preprocess:
-      capacity: 4
+      capacity: 6
       drop_policy: drop_oldest
     preprocess_to_tracking:
-      capacity: 4
+      capacity: 6
+      drop_policy: drop_oldest
+    tracking_to_visualization:
+      capacity: 6
       drop_policy: drop_oldest
 
   latest_stores:
