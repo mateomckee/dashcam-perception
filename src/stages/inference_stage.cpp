@@ -35,7 +35,7 @@ void InferenceStage::run(const StopToken& global, const std::atomic_bool& local)
         last_seen_version = ver;
 
         // Simulate a heavy inference operation
-        std::this_thread::sleep_for(std::chrono::milliseconds(72));
+        //std::this_thread::sleep_for(std::chrono::milliseconds(72));
 
         // Store inference results
         dcp::Detections dets;
@@ -43,12 +43,13 @@ void InferenceStage::run(const StopToken& global, const std::atomic_bool& local)
         dets.source_frame_id = pf_opt->source_frame_id;
         dets.preprocess_info = pf_opt->info;
 
-        // Test value of a singular detection
+        // This is where the detection mapping + storing would go, key to the whole system
         dcp::Detection d;
         d.class_id = 0;
         d.confidence = 0.9f;
         d.bbox = {50.f, 50.f, 100.f, 80.f};
         dets.items.push_back(d);
+        //
 
         // Store detections in latest store
         detections_latest_store_->write(std::move(dets));

@@ -28,11 +28,51 @@
 #include "stages/tracking_stage.hpp"
 
 #include <opencv2/highgui.hpp>  // cv::namedWindow, cv::imshow, cv::waitKey
+#include <opencv2/imgproc.hpp>
 
 static std::atomic_bool g_sigint{false};
 
 static void HandleSigint(int) {
   g_sigint.store(true, std::memory_order_relaxed);
+}
+
+
+static void DrawTracks(cv::Mat& img, const dcp::WorldState& ws) {
+    for (const auto& tr : ws.tracks) {
+        // Choose color
+        cv::Scalar color;
+        if (tr.missed_frames == 0) {
+            color = cv::Scalar(0, 255, 0);   // green = matched this frame
+        } else {
+            color = cv::Scalar(0, 0, 255);   // red = not matched
+        }
+
+        // Bounding box
+        cv::Rect r(
+            static_cast<int>(tr.bbox.x),
+            static_cast<int>(tr.bbox.y),
+            static_cast<int>(tr.bbox.w),
+            static_cast<int>(tr.bbox.h)
+        );
+
+        // Draw rectangle
+        cv::rectangle(img, r, color, 2);
+
+        // Label
+        std::ostringstream oss;
+        oss << "id=" << tr.id;
+
+        cv::putText(
+            img,
+            oss.str(),
+            cv::Point(r.x, std::max(12, r.y - 6)),
+            cv::FONT_HERSHEY_SIMPLEX,
+            0.45,
+            color,
+            1,
+            cv::LINE_AA
+        );
+    }
 }
 
 // live_pipeline.cpp is my full system MVP
@@ -129,6 +169,14 @@ int main(int argc, char** argv) {
         break;
       }
 
+      int key = cv::waitKey(1);
+      if (key == 'q' || key == 27) {
+        std::cout << "User exited. Shutting down pipeline..." << std::endl;
+        global_stop.request_stop();
+        break;
+      }
+
+      // Run UI
       dcp::RenderFrame rf;
       if (tracking_to_visualization_queue->try_pop_for(rf, std::chrono::milliseconds(5))) {
         if (!rf.frame.image.empty()) {
@@ -139,14 +187,8 @@ int main(int argc, char** argv) {
 
       if (have_latest) {
         hud.draw(latest.frame.image, metrics, qviews);
+        DrawTracks(latest.frame.image, latest.world);
         cv::imshow(cfg.visualization.window_name, latest.frame.image);
-      }
-
-      int key = cv::waitKey(1);
-      if (key == 'q' || key == 27) {
-        std::cout << "User exited. Shutting down pipeline..." << std::endl;
-        global_stop.request_stop();
-        break;
       }
     }
 
