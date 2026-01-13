@@ -35,6 +35,8 @@ struct QueueConfig {
 
 struct CameraConfig {
   std::string backend = "opencv";
+  std::string source = "device";
+  std::string file_path = "data/videos/Drive6-b.mov";
   int device_index = 0;
 
   int width = 1280;

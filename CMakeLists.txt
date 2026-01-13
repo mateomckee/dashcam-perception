@@ -14,13 +14,22 @@ option(DCP_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
 # Dependencies
 find_package(yaml-cpp REQUIRED)
 find_package(Threads REQUIRED)
-
-# OpenCV
 find_package(OpenCV REQUIRED)
+
+# ONNX Runtime (Homebrew)
+find_library(ONNXRUNTIME_LIB
+  NAMES onnxruntime
+  PATHS /opt/homebrew/lib
+  REQUIRED
+)
+
+include_directories(/opt/homebrew/include)
 
 # Core library
 add_library(dashcam_core
   src/core/config_loader.cpp
+  src/core/yolo_dnn.cpp
+
   src/infra/thread_runner.cpp
 
   src/stages/stage.cpp
@@ -28,10 +37,9 @@ add_library(dashcam_core
   src/stages/preprocess_stage.cpp
   src/stages/inference_stage.cpp
   src/stages/tracking_stage.cpp
+
   src/apps/ansi_dashboard.cpp
   src/apps/hud_overlay.cpp
-  # Add more .cpp files once created
-  # ...
 )
 
 target_include_directories(dashcam_core
@@ -44,6 +52,7 @@ target_link_libraries(dashcam_core
     yaml-cpp::yaml-cpp
     Threads::Threads
     ${OpenCV_LIBS}
+    ${ONNXRUNTIME_LIB}
 )
 
 # Warnings
@@ -61,7 +70,7 @@ if (DCP_WARNINGS_AS_ERRORS)
   endif()
 endif()
 
-# Apps
+# Applications
 add_executable(live_pipeline apps/live_pipeline.cpp)
 target_link_libraries(live_pipeline PRIVATE dashcam_core)
 
@@ -71,17 +80,14 @@ target_link_libraries(live_viewer PRIVATE dashcam_core)
 add_executable(offline_replay apps/offline_replay.cpp)
 target_link_libraries(offline_replay PRIVATE dashcam_core)
 
+# Tests / Utilities
 add_executable(thread_runner_test tests/thread_runner_test.cpp)
 target_link_libraries(thread_runner_test PRIVATE dashcam_core)
 
 add_executable(bounded_queue_test tests/bounded_queue_test.cpp)
 target_link_libraries(bounded_queue_test PRIVATE dashcam_core)
 
-# Tests
+# CTest
 if (DCP_BUILD_TESTS)
   enable_testing()
-  # Later on, add Catch2 or GoogleTest if using them
-  # add_executable(test_bounded_queue tests/test_bounded_queue.cpp)
-  # target_link_libraries(test_bounded_queue PRIVATE dashcam_core)
-  # add_test(NAME test_bounded_queue COMMAND test_bounded_queue)
 endif()

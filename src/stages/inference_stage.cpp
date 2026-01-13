@@ -6,7 +6,22 @@
 namespace dcp {
 
 InferenceStage::InferenceStage(StageMetrics* metrics, InferenceConfig cfg, std::shared_ptr<LatestStore<PreprocessedFrame>> preprocessed_latest_store, std::shared_ptr<LatestStore<Detections>> detections_latest_store)
-    : Stage("inference_stage"), metrics_(metrics), cfg_(std::move(cfg)), preprocessed_latest_store_(std::move(preprocessed_latest_store)), detections_latest_store_(std::move(detections_latest_store)) {}
+    : Stage("inference_stage"), metrics_(metrics), cfg_(std::move(cfg)), preprocessed_latest_store_(std::move(preprocessed_latest_store)), detections_latest_store_(std::move(detections_latest_store))
+{
+    if (!cfg_.enabled) return;
+
+    YoloDnn::Params p;
+    p.onnx_path = cfg_.model.path;
+    p.input_w = cfg_.model.input_width;
+    p.input_h = cfg_.model.input_height;
+    p.conf_thresh = cfg_.confidence_threshold;
+    p.nms_thresh = 0.45f;
+
+    yolo_ = std::make_unique<YoloDnn>(std::move(p));
+    if (!yolo_->is_loaded()) {
+        yolo_.reset();
+    }
+}
 
 void InferenceStage::run(const StopToken& global, const std::atomic_bool& local) {
     using namespace std::chrono_literals;
@@ -34,25 +49,11 @@ void InferenceStage::run(const StopToken& global, const std::atomic_bool& local)
         // Set for checking version against future frames
         last_seen_version = ver;
 
-        // Simulate a heavy inference operation
-        //std::this_thread::sleep_for(std::chrono::milliseconds(72));
-
-        // Store inference results
-        dcp::Detections dets;
-        dets.inference_time = std::chrono::steady_clock::now();
-        dets.source_frame_id = pf_opt->source_frame_id;
-        dets.preprocess_info = pf_opt->info;
-
-        // This is where the detection mapping + storing would go, key to the whole system
-        dcp::Detection d;
-        d.class_id = 0;
-        d.confidence = 0.9f;
-        d.bbox = {50.f, 50.f, 100.f, 80.f};
-        dets.items.push_back(d);
-        //
+        PreprocessedFrame pf = std::move(*pf_opt);   // local stable snapshot
+        dcp::Detections detections = yolo_->infer(pf);
 
         // Store detections in latest store
-        detections_latest_store_->write(std::move(dets));
+        detections_latest_store_->write(std::move(detections));
 
         // End work time, store in metrics
         const auto work_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - t0).count();

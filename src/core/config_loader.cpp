@@ -25,6 +25,16 @@ static YAML::Node Child(const YAML::Node& parent, const char* key) {
 }
 
 template <typename T>
+static T GetOr(const YAML::Node& n, const std::string& key_path, const T& fallback) {
+  if (!n) return fallback;
+  try {
+    return n.as<T>(fallback);
+  } catch (const YAML::Exception& e) {
+    throw ConfigError(key_path, e.what());
+  }
+}
+
+template <typename T>
 static T GetOrKey(const YAML::Node& parent, const char* key, const std::string& key_path, const T& fallback) {
   const YAML::Node n = Child(parent, key);
   if (!n) return fallback;
@@ -35,7 +45,8 @@ static T GetOrKey(const YAML::Node& parent, const char* key, const std::string& 
   }
 }
 
-static DropPolicy ParseDropPolicyKey(const YAML::Node& parent, const char* key, const std::string& key_path, DropPolicy fallback) {
+static DropPolicy ParseDropPolicyKey(const YAML::Node& parent, const char* key, const std::string& key_path,
+                                     DropPolicy fallback) {
   const YAML::Node n = Child(parent, key);
   if (!n) return fallback;
   const std::string s = GetOrKey<std::string>(parent, key, key_path, "");
@@ -56,6 +67,8 @@ static void LoadCamera(const YAML::Node& root, CameraConfig& cfg) {
   const std::string p = "camera";
 
   cfg.backend = GetOrKey<std::string>(cam, "backend", PathJoin(p, "backend"), cfg.backend);
+  cfg.source = GetOrKey<std::string>(cam, "source", PathJoin(p, "source"), cfg.source);
+  cfg.file_path = GetOrKey<std::string>(cam, "file_path", PathJoin(p, "file_path"), cfg.file_path);
   cfg.device_index = GetOrKey<int>(cam, "device_index", PathJoin(p, "device_index"), cfg.device_index);
   cfg.width = GetOrKey<int>(cam, "width", PathJoin(p, "width"), cfg.width);
   cfg.height = GetOrKey<int>(cam, "height", PathJoin(p, "height"), cfg.height);
@@ -65,39 +78,46 @@ static void LoadCamera(const YAML::Node& root, CameraConfig& cfg) {
 }
 
 static void LoadPreprocess(const YAML::Node& root, PreprocessConfig& cfg) {
-  const auto pre = root["preprocess"];
+  const YAML::Node pre = root["preprocess"];
+  if (!pre) return;
   const std::string p = "preprocess";
 
-  cfg.resize_width = GetOrKey<int>(pre["resize_width"], "resize_width", PathJoin(p, "resize_width"), cfg.resize_width);
-  cfg.resize_height = GetOrKey<int>(pre["resize_height"], "resize_height", PathJoin(p, "resize_height"), cfg.resize_height);
+  cfg.resize_width = GetOrKey<int>(pre, "resize_width", PathJoin(p, "resize_width"), cfg.resize_width);
+  cfg.resize_height = GetOrKey<int>(pre, "resize_height", PathJoin(p, "resize_height"), cfg.resize_height);
 
-  const auto roi = pre["crop_roi"];
+  const YAML::Node roi = pre["crop_roi"];
+  if (!roi) return;
   const std::string rp = PathJoin(p, "crop_roi");
-  cfg.crop_roi.enabled = GetOrKey<bool>(roi["enabled"], "enabled", PathJoin(rp, "enabled"), cfg.crop_roi.enabled);
 
-  // ROI Config section within PreprocessConfig
-  // Set either normalized percentage or static pixel mode
+  cfg.crop_roi.enabled = GetOrKey<bool>(roi, "enabled", PathJoin(rp, "enabled"), cfg.crop_roi.enabled);
 
-  const bool has_norm =
-      (roi && (roi["x_norm"] || roi["y_norm"] || roi["w_norm"] || roi["h_norm"]));
+  const bool has_use_norm_key = static_cast<bool>(roi["use_normalized"]);
+  const bool has_norm_keys =
+      static_cast<bool>(roi["x_norm"]) || static_cast<bool>(roi["y_norm"]) ||
+      static_cast<bool>(roi["w_norm"]) || static_cast<bool>(roi["h_norm"]);
+  const bool has_px_keys =
+      static_cast<bool>(roi["x"]) || static_cast<bool>(roi["y"]) ||
+      static_cast<bool>(roi["width"]) || static_cast<bool>(roi["height"]);
 
-  const bool has_px =
-      (roi && (roi["x"] || roi["y"] || roi["width"] || roi["height"]));
-
-  if (has_norm) {
+  if (has_use_norm_key) {
+    cfg.crop_roi.use_normalized =
+        GetOrKey<bool>(roi, "use_normalized", PathJoin(rp, "use_normalized"), cfg.crop_roi.use_normalized);
+  } else if (has_norm_keys) {
     cfg.crop_roi.use_normalized = true;
-    cfg.crop_roi.x_norm = GetOrKey<float>(roi["x_norm"], "x_norm", PathJoin(rp, "x_norm"), cfg.crop_roi.x_norm);
-    cfg.crop_roi.y_norm = GetOrKey<float>(roi["y_norm"], "y_norm", PathJoin(rp, "y_norm"), cfg.crop_roi.y_norm);
-    cfg.crop_roi.w_norm = GetOrKey<float>(roi["w_norm"], "w_norm", PathJoin(rp, "w_norm"), cfg.crop_roi.w_norm);
-    cfg.crop_roi.h_norm = GetOrKey<float>(roi["h_norm"], "h_norm", PathJoin(rp, "h_norm"), cfg.crop_roi.h_norm);
-  } else if (has_px) {
+  } else if (has_px_keys) {
     cfg.crop_roi.use_normalized = false;
-    cfg.crop_roi.x = GetOrKey<int>(roi["x"], "x", PathJoin(rp, "x"), cfg.crop_roi.x);
-    cfg.crop_roi.y = GetOrKey<int>(roi["y"], "y", PathJoin(rp, "y"), cfg.crop_roi.y);
-    cfg.crop_roi.width = GetOrKey<int>(roi["width"],"width", PathJoin(rp, "width"), cfg.crop_roi.width);
-    cfg.crop_roi.height = GetOrKey<int>(roi["height"], "height", PathJoin(rp, "height"), cfg.crop_roi.height);
+  }
+
+  if (cfg.crop_roi.use_normalized) {
+    cfg.crop_roi.x_norm = GetOrKey<float>(roi, "x_norm", PathJoin(rp, "x_norm"), cfg.crop_roi.x_norm);
+    cfg.crop_roi.y_norm = GetOrKey<float>(roi, "y_norm", PathJoin(rp, "y_norm"), cfg.crop_roi.y_norm);
+    cfg.crop_roi.w_norm = GetOrKey<float>(roi, "w_norm", PathJoin(rp, "w_norm"), cfg.crop_roi.w_norm);
+    cfg.crop_roi.h_norm = GetOrKey<float>(roi, "h_norm", PathJoin(rp, "h_norm"), cfg.crop_roi.h_norm);
   } else {
-    cfg.crop_roi.use_normalized = true;
+    cfg.crop_roi.x = GetOrKey<int>(roi, "x", PathJoin(rp, "x"), cfg.crop_roi.x);
+    cfg.crop_roi.y = GetOrKey<int>(roi, "y", PathJoin(rp, "y"), cfg.crop_roi.y);
+    cfg.crop_roi.width = GetOrKey<int>(roi, "width", PathJoin(rp, "width"), cfg.crop_roi.width);
+    cfg.crop_roi.height = GetOrKey<int>(roi, "height", PathJoin(rp, "height"), cfg.crop_roi.height);
   }
 }
 
@@ -115,7 +135,7 @@ static void LoadBuffering(const YAML::Node& root, BufferingConfig& cfg) {
     LoadQueueConfig(qs["preprocess_to_tracking"],
                     PathJoin(PathJoin(p, "queues"), "preprocess_to_tracking"),
                     cfg.queues.preprocess_to_tracking);
-    
+
     LoadQueueConfig(qs["tracking_to_visualization"],
                     PathJoin(PathJoin(p, "queues"), "tracking_to_visualization"),
                     cfg.queues.tracking_to_visualization);
@@ -124,9 +144,13 @@ static void LoadBuffering(const YAML::Node& root, BufferingConfig& cfg) {
   const YAML::Node ls = buf["latest_stores"];
   if (ls) {
     const std::string lp = PathJoin(p, "latest_stores");
-    cfg.latest_stores.inference_frame = GetOrKey<bool>(ls, "inference_frame", PathJoin(lp, "inference_frame"), cfg.latest_stores.inference_frame);
-    cfg.latest_stores.inference_detections = GetOrKey<bool>(ls, "inference_detections", PathJoin(lp, "inference_detections"), cfg.latest_stores.inference_detections);
-    cfg.latest_stores.world_state = GetOrKey<bool>(ls, "world_state", PathJoin(lp, "world_state"), cfg.latest_stores.world_state);
+    cfg.latest_stores.inference_frame =
+        GetOrKey<bool>(ls, "inference_frame", PathJoin(lp, "inference_frame"), cfg.latest_stores.inference_frame);
+    cfg.latest_stores.inference_detections =
+        GetOrKey<bool>(ls, "inference_detections", PathJoin(lp, "inference_detections"),
+                       cfg.latest_stores.inference_detections);
+    cfg.latest_stores.world_state =
+        GetOrKey<bool>(ls, "world_state", PathJoin(lp, "world_state"), cfg.latest_stores.world_state);
   }
 }
 
@@ -138,7 +162,8 @@ static void LoadInference(const YAML::Node& root, InferenceConfig& cfg) {
   cfg.enabled = GetOrKey<bool>(inf, "enabled", PathJoin(p, "enabled"), cfg.enabled);
   cfg.backend = GetOrKey<std::string>(inf, "backend", PathJoin(p, "backend"), cfg.backend);
   cfg.target_fps = GetOrKey<int>(inf, "target_fps", PathJoin(p, "target_fps"), cfg.target_fps);
-  cfg.confidence_threshold = GetOrKey<float>(inf, "confidence_threshold", PathJoin(p, "confidence_threshold"), cfg.confidence_threshold);
+  cfg.confidence_threshold =
+      GetOrKey<float>(inf, "confidence_threshold", PathJoin(p, "confidence_threshold"), cfg.confidence_threshold);
 
   const YAML::Node model = inf["model"];
   const std::string mp = PathJoin(p, "model");
@@ -157,7 +182,8 @@ static void LoadTracking(const YAML::Node& root, TrackingConfig& cfg) {
   cfg.backend = GetOrKey<std::string>(tr, "backend", PathJoin(p, "backend"), cfg.backend);
   cfg.iou_threshold = GetOrKey<float>(tr, "iou_threshold", PathJoin(p, "iou_threshold"), cfg.iou_threshold);
   cfg.max_missed_frames = GetOrKey<int>(tr, "max_missed_frames", PathJoin(p, "max_missed_frames"), cfg.max_missed_frames);
-  cfg.min_confirmed_frames = GetOrKey<int>(tr, "min_confirmed_frames", PathJoin(p, "min_confirmed_frames"), cfg.min_confirmed_frames);
+  cfg.min_confirmed_frames =
+      GetOrKey<int>(tr, "min_confirmed_frames", PathJoin(p, "min_confirmed_frames"), cfg.min_confirmed_frames);
 }
 
 static void LoadVisualization(const YAML::Node& root, VisualizationConfig& cfg) {
@@ -180,7 +206,8 @@ static void LoadVisualization(const YAML::Node& root, VisualizationConfig& cfg) 
   const std::string rp = PathJoin(p, "recording");
   if (rec) {
     cfg.recording.enabled = GetOrKey<bool>(rec, "enabled", PathJoin(rp, "enabled"), cfg.recording.enabled);
-    cfg.recording.output_path = GetOrKey<std::string>(rec, "output_path", PathJoin(rp, "output_path"), cfg.recording.output_path);
+    cfg.recording.output_path = GetOrKey<std::string>(rec, "output_path", PathJoin(rp, "output_path"),
+                                                      cfg.recording.output_path);
     cfg.recording.fps = GetOrKey<int>(rec, "fps", PathJoin(rp, "fps"), cfg.recording.fps);
   }
 }
@@ -190,14 +217,16 @@ static void LoadMetrics(const YAML::Node& root, MetricsConfig& cfg) {
   if (!m) return;
   const std::string p = "metrics";
 
-  cfg.enable_console_log = GetOrKey<bool>(m, "enable_console_log", PathJoin(p, "enable_console_log"), cfg.enable_console_log);
+  cfg.enable_console_log =
+      GetOrKey<bool>(m, "enable_console_log", PathJoin(p, "enable_console_log"), cfg.enable_console_log);
   cfg.log_interval_ms = GetOrKey<int>(m, "log_interval_ms", PathJoin(p, "log_interval_ms"), cfg.log_interval_ms);
 
   const YAML::Node csv = m["record_csv"];
   const std::string cp = PathJoin(p, "record_csv");
   if (csv) {
     cfg.record_csv.enabled = GetOrKey<bool>(csv, "enabled", PathJoin(cp, "enabled"), cfg.record_csv.enabled);
-    cfg.record_csv.output_path = GetOrKey<std::string>(csv, "output_path", PathJoin(cp, "output_path"), cfg.record_csv.output_path);
+    cfg.record_csv.output_path =
+        GetOrKey<std::string>(csv, "output_path", PathJoin(cp, "output_path"), cfg.record_csv.output_path);
   }
 }
 
@@ -210,8 +239,17 @@ void ValidateOrThrow(const AppConfig& cfg) {
 
   if (cfg.preprocess.crop_roi.enabled) {
     const auto& r = cfg.preprocess.crop_roi;
-    if (r.width <= 0 || r.height <= 0) throw ConfigError("preprocess.crop_roi", "width/height must be > 0 when enabled");
-    if (r.x < 0 || r.y < 0) throw ConfigError("preprocess.crop_roi", "x/y must be >= 0");
+    if (r.use_normalized) {
+      if (r.w_norm <= 0.f || r.h_norm <= 0.f)
+        throw ConfigError("preprocess.crop_roi", "w_norm/h_norm must be > 0 when enabled");
+      if (r.x_norm < 0.f || r.y_norm < 0.f)
+        throw ConfigError("preprocess.crop_roi", "x_norm/y_norm must be >= 0");
+    } else {
+      if (r.width <= 0 || r.height <= 0)
+        throw ConfigError("preprocess.crop_roi", "width/height must be > 0 when enabled");
+      if (r.x < 0 || r.y < 0)
+        throw ConfigError("preprocess.crop_roi", "x/y must be >= 0");
+    }
   }
 
   if (cfg.buffering.queues.camera_to_preprocess.capacity < 1)

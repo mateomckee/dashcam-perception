@@ -4,6 +4,7 @@
 #include <chrono>
 #include <csignal>
 #include <thread>
+#include <iomanip>
 
 // Utilities
 #include "core/config_loader.hpp"
@@ -30,12 +31,14 @@
 #include <opencv2/highgui.hpp>  // cv::namedWindow, cv::imshow, cv::waitKey
 #include <opencv2/imgproc.hpp>
 
+#include "core/labels/general_labels.hpp"
+#include "core/labels/car_labels.hpp"
+
 static std::atomic_bool g_sigint{false};
 
 static void HandleSigint(int) {
   g_sigint.store(true, std::memory_order_relaxed);
 }
-
 
 static void DrawTracks(cv::Mat& img, const dcp::WorldState& ws) {
     for (const auto& tr : ws.tracks) {
@@ -59,12 +62,14 @@ static void DrawTracks(cv::Mat& img, const dcp::WorldState& ws) {
         cv::rectangle(img, r, color, 2);
 
         // Label
-        std::ostringstream oss;
-        oss << "id=" << tr.id;
+        std::ostringstream label;
+        label << dcp::GeneralClassName(tr.class_id)
+        << " " << std::fixed << std::setprecision(2)
+        << tr.confidence;
 
         cv::putText(
             img,
-            oss.str(),
+            label.str(),
             cv::Point(r.x, std::max(12, r.y - 6)),
             cv::FONT_HERSHEY_SIMPLEX,
             0.45,
@@ -84,6 +89,7 @@ int main(int argc, char** argv) {
   try {
     dcp::AppConfig cfg = dcp::LoadConfigFromYamlFile(cfg_path);
     std::cout << "Loaded config OK: " << cfg_path << "\n";
+    std::cout << "ROI enabled: : " << cfg.preprocess.crop_roi.enabled << "\n";
 
     std::signal(SIGINT, HandleSigint);
     const auto start = std::chrono::steady_clock::now();
@@ -186,8 +192,8 @@ int main(int argc, char** argv) {
       }
 
       if (have_latest) {
-        hud.draw(latest.frame.image, metrics, qviews);
         DrawTracks(latest.frame.image, latest.world);
+        hud.draw(latest.frame.image, metrics, qviews);
         cv::imshow(cfg.visualization.window_name, latest.frame.image);
       }
     }

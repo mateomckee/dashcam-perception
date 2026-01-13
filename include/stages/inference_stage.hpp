@@ -10,6 +10,8 @@
 #include "infra/latest_store.hpp"
 #include "stages/stage.hpp"
 
+#include "core/yolo_dnn.hpp"
+
 namespace dcp {
 
 class InferenceStage final : public Stage {
@@ -25,6 +27,7 @@ private:
   InferenceConfig cfg_;
   std::shared_ptr<LatestStore<PreprocessedFrame>> preprocessed_latest_store_;
   std::shared_ptr<LatestStore<Detections>> detections_latest_store_;
+  std::unique_ptr<YoloDnn> yolo_;
 };
 
 } // namespace dcp

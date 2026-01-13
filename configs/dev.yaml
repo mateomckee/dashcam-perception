@@ -1,21 +1,24 @@
 camera:
   backend: opencv
+  source: file    # device | file
+  file_path: "../q.mp4"
   device_index: 0
   width: 1280
   height: 720
   fps: 30
   flip_vertical: false
-  flip_horizontal: true
+  flip_horizontal: false
 
 preprocess:
   resize_width: 640
   resize_height: 360
   crop_roi:
     enabled: true
+    use_normalized: true
     x_norm: 0.0
-    y_norm: 0.5
+    y_norm: 0.3
     w_norm: 1.0
-    h_norm: 0.5
+    h_norm: 0.7
 
 buffering:
   queues:
@@ -36,13 +39,13 @@ buffering:
 
 inference:
   enabled: true
-  backend: dummy          # dummy | onnx
+  backend: onnx          # dummy | onnx
   target_fps: 10
-  confidence_threshold: 0.5
+  confidence_threshold: 0.4
   model:
-    path: ""              # required if backend != dummy
-    input_width: 640
-    input_height: 360
+    path: "assets/models/yolo/yolov8n.onnx"              # required if backend != dummy
+    input_width: 512                                     #m: 640/640, n: 512/288
+    input_height: 288
 
 tracking:
   backend: iou            # iou | kalman
